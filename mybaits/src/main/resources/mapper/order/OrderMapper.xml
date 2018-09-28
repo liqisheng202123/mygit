@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.example.mybaits.order.dao.OrderMapper" >
+
+    <insert id="insert" parameterType="com.example.mybaits.order.model.Order" >
+        INSERT INTO `order`
+
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            userid,order_name,
+            <if test="money != null and money != ''">
+                money,
+            </if>
+
+        </trim>
+        <trim prefix="VALUES(" suffix=")" suffixOverrides=",">
+           #{userId, jdbcType=VARCHAR},#{orderName, jdbcType=VARCHAR},
+            <if test="money != null">
+                #{money},
+            </if>
+        </trim>
+        <selectKey resultType="java.lang.Integer" keyProperty="id" >
+            select LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+
+    <sql id="whereSql">
+        <where>
+            <if test="id != null">
+                and u.id = #{id, jdbcType=INTEGER}
+            </if>
+            <if test="orderName != null and orderName != ''">
+                and u.order_name = #{orderName, jdbcType=VARCHAR}
+            </if>
+            <if test="userId != null">
+                and u.userid = #{userId, jdbcType=INTEGER}
+            </if>
+            <if test="money != null">
+                and u.money = #{money}
+            </if>
+        </where>
+    </sql>
+    <sql id="updateSql">
+        <set>
+            <if test="userName != null and userName != ''">
+                 u.order_name = #{userName, jdbcType=VARCHAR},
+            </if>
+            <if test="money != null">
+                 u.money = #{money},
+            </if>
+        </set>
+    </sql>
+
+    <select id="queryByParams" resultType="com.example.mybaits.user.model.User">
+        SELECT
+        u.id,u.order_name orderName,u.userId,u.money
+        FROM
+        `order` u
+        <include refid="whereSql"/>
+    </select>
+
+    <delete id="delById" >
+        DELETE from `order` u where u.id = #{id, jdbcType=INTEGER}
+    </delete>
+
+    <update id="update" parameterType="com.example.mybaits.user.model.User" >
+        UPDATE `order`
+        <include refid="updateSql"/>
+        where id = #{id, jdbcType=INTEGER}
+    </update>
+
+</mapper>
