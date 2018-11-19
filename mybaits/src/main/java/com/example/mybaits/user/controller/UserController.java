@@ -22,6 +22,7 @@ public class UserController {
 //    @ResponseBody
     @RequestMapping("/add")
     public int add(User user){
+        System.out.println(user);
         return userService.insert(user);
     }
 
