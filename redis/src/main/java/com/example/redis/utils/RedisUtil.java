@@ -1,16 +1,118 @@
 package com.example.redis.utils;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.util.CollectionUtils;
+import redis.clients.jedis.Jedis;
 
 public class RedisUtil {
-
     private RedisTemplate<String, Object> redisTemplate;
+
+
+
+
+
+    private static final Long SUCCESS = 1L;
+    /**
+     * 释放锁
+     * @param lockKey
+     * @param value
+     * @return
+     */
+    public  boolean releaseLock(String lockKey, String value){
+
+        String script = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end";
+
+        RedisScript<String> redisScript = new DefaultRedisScript<>(script, String.class);
+
+        Object result = redisTemplate.execute(redisScript, Collections.singletonList(lockKey),value);
+        if(SUCCESS.equals(result)) {
+            return true;
+        }
+
+        return false;
+    }
+
+
+    /**
+     * 获取锁
+     * @param lockKey
+     * @param value
+     * @param expireTime：单位-秒
+     * @return
+     */
+    public  boolean getLock(String lockKey, String value, int expireTime){
+        boolean ret = false;
+        try{
+            String script = "if redis.call('setNx',KEYS[1],ARGV[1]) then if redis.call('get',KEYS[1])==ARGV[1] then return redis.call('expire',KEYS[1],ARGV[2]) else return 0 end end";
+
+            RedisScript<String> redisScript = new DefaultRedisScript<>(script, String.class);
+
+            Object result = redisTemplate.execute(redisScript, Collections.singletonList(lockKey),value,expireTime);
+
+            if(SUCCESS.equals(result)){
+                return true;
+            }
+
+        }catch(Exception e){
+
+        }
+        return ret;
+    }
+
+
+
+
+    private static final String LOCK_SUCCESS = "OK";
+    private static final String SET_IF_NOT_EXIST = "NX";
+    private static final String SET_WITH_EXPIRE_TIME = "PX";
+
+    private static final Long RELEASE_SUCCESS = 1L;
+
+    /**
+     * 释放分布式锁
+     * @param jedis Redis客户端
+     * @param lockKey 锁
+     * @param requestId 请求标识
+     * @return 是否释放成功
+     */
+    public static boolean releaseDistributedLock(Jedis jedis, String lockKey, String requestId) {
+
+        String script = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end";
+        Object result = jedis.eval(script, Collections.singletonList(lockKey), Collections.singletonList(requestId));
+
+        if (RELEASE_SUCCESS.equals(result)) {
+            return true;
+        }
+        return false;
+
+    };
+
+    /**
+     * 尝试获取分布式锁
+     * @param jedis Redis客户端
+     * @param lockKey 锁
+     * @param requestId 请求标识
+     * @param expireTime 超期时间
+     * @return 是否获取成功
+     */
+    public static boolean tryGetDistributedLock(Jedis jedis,String lockKey, String requestId, int expireTime) {
+
+        String result = jedis.set(lockKey, requestId, SET_IF_NOT_EXIST, SET_WITH_EXPIRE_TIME, expireTime);
+
+        if (LOCK_SUCCESS.equals(result)) {
+            return true;
+        }
+        return false;
+
+    }
 
     public void setRedisTemplate(RedisTemplate<String, Object> redisTemplate) {
         this.redisTemplate = redisTemplate;
