@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.AbstractQueuedSynchronizer;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -16,8 +18,8 @@ public class RedisUtil {
     private RedisTemplate<String, Object> redisTemplate;
 
 
-
-
+    AbstractQueuedSynchronizer abstractQueuedSynchronizer;
+    ReentrantLock reentrantLock;
 
     private static final Long SUCCESS = 1L;
     /**
@@ -31,7 +33,6 @@ public class RedisUtil {
         String script = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end";
 
         RedisScript<String> redisScript = new DefaultRedisScript<>(script, String.class);
-
         Object result = redisTemplate.execute(redisScript, Collections.singletonList(lockKey),value);
         if(SUCCESS.equals(result)) {
             return true;
@@ -83,7 +84,7 @@ public class RedisUtil {
      * @param requestId 请求标识
      * @return 是否释放成功
      */
-    public static boolean releaseDistributedLock(Jedis jedis, String lockKey, String requestId) {
+    public  boolean releaseDistributedLock(Jedis jedis, String lockKey, String requestId) {
 
         String script = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end";
         Object result = jedis.eval(script, Collections.singletonList(lockKey), Collections.singletonList(requestId));
@@ -103,7 +104,7 @@ public class RedisUtil {
      * @param expireTime 超期时间
      * @return 是否获取成功
      */
-    public static boolean tryGetDistributedLock(Jedis jedis,String lockKey, String requestId, int expireTime) {
+    public  boolean tryGetDistributedLock(Jedis jedis,String lockKey, String requestId, int expireTime) {
 
         String result = jedis.set(lockKey, requestId, SET_IF_NOT_EXIST, SET_WITH_EXPIRE_TIME, expireTime);
 
